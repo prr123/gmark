@@ -15,7 +15,7 @@ import (
 	"log"
 	"os"
 	"bytes"
-	imgAttr "goDemo/gmark/goldmark/extAttr"
+	imgAttr "goDemo/gmark/goldmark/imgAttr"
 	"goDemo/gmark/goldmark"
 	util "github.com/prr123/utility/utilLib"
 )
