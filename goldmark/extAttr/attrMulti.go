@@ -8,17 +8,51 @@
 // This extension adds support for block attributes in markdowns.
 //  paragraph text with attributes
 
-package attributes
+package imgAttributes
 
 import (
 	"fmt"
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
-	"github.com/yuin/goldmark/parser"
-	"github.com/yuin/goldmark/renderer"
-	"github.com/yuin/goldmark/text"
-	"github.com/yuin/goldmark/util"
+	"goDemo/gmark/goldmark"
+	"goDemo/gmark/goldmark/ast"
+	"goDemo/gmark/goldmark/parser"
+	"goDemo/gmark/goldmark/renderer"
+	"goDemo/gmark/goldmark/renderer/html"
+	"goDemo/gmark/goldmark/text"
+	"goDemo/gmark/goldmark/util"
 )
+
+// A Strikethrough struct represents a strikethrough of GFM text.
+type ImgAttr struct {
+    ast.BaseInline
+}
+
+// Dump implements Node.Dump.
+func (a *ImgAttr) Dump(source []byte, level int) {
+fmt.Printf("dbg dump -- entering dump\n")
+	attrs := a.Attributes()
+	list := make(map[string]string, len(attrs))
+	for _, attr := range attrs {
+		name := util.BytesToReadOnlyString(attr.Name)
+		value := util.BytesToReadOnlyString(util.EscapeHTML(attr.Value.([]byte)))
+		list[name] = value
+	}
+
+	ast.DumpHelper(a, source, level, list, nil)
+}
+
+
+// KindStrikethrough is a NodeKind of the Strikethrough node.
+var KindImgAttr = ast.NewNodeKind("ImgAttr")
+
+// Kind implements Node.Kind.
+func (n *ImgAttr) Kind() ast.NodeKind {
+    return KindImgAttr
+}
+
+// NewStrikethrough returns a new Strikethrough node.
+func NewImgAttr() *ImgAttr {
+    return &ImgAttr{}
+}
 
 type imgAttrDelimiterProcessor struct {
 }
@@ -27,12 +61,12 @@ func (p *imgAttrDelimiterProcessor) IsDelimiter(b byte) bool {
 	return b == '{'
 }
 
-//func (p *strikethroughDelimiterProcessor) CanOpenCloser(opener, closer *parser.Delimiter) bool {
-//	return opener.Char == closer.Char
-//}
+func (p *imgAttrDelimiterProcessor) CanOpenCloser(opener, closer *parser.Delimiter) bool {
+	return false
+}
 
-func (p *strikethroughDelimiterProcessor) OnMatch(consumes int) gast.Node {
-	return ast.()
+func (p *imgAttrDelimiterProcessor) OnMatch(consumes int) ast.Node {
+	return NewImgAttr()
 }
 
 var defaultImgAttrDelimiterProcessor = &imgAttrDelimiterProcessor{}
@@ -42,16 +76,16 @@ type imgAttrParser struct {}
 var defaultImgAttrParser = &imgAttrParser{}
 
 // NewStrikethroughParser return a new InlineParser that parses
-// strikethrough expressions.
+// imgAttr expressions.
 func NewImgAttrParser() parser.InlineParser {
-	return defaultParser
+	return defaultImgAttrParser
 }
 
 func (s *imgAttrParser) Trigger() []byte {
 	return []byte{'{'}
 }
 
-func (s *imgAtttrParser) Parse(parent gast.Node, block text.Reader, pc parser.Context) gast.Node {
+func (s *imgAttrParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
 	before := block.PrecendingCharacter()
 	line, segment := block.PeekLine()
 	node := parser.ScanDelimiter(line, before, 1, defaultImgAttrDelimiterProcessor)
@@ -65,83 +99,9 @@ func (s *imgAtttrParser) Parse(parent gast.Node, block text.Reader, pc parser.Co
 	return node
 }
 
-func (s *strikethroughParser) CloseBlock(parent gast.Node, pc parser.Context) {
-	// nothing to do
-}
 
-
-
-// block are parsed attributes block.
-type inline struct {
-	ast.BaseInLine
-}
-
-// Dump implements Node.Dump.
-func (a *inline) Dump(source []byte, level int) {
-fmt.Printf("dbg -- entering dump\n")
-	attrs := a.Attributes()
-	list := make(map[string]string, len(attrs))
-	for _, attr := range attrs {
-		name := util.BytesToReadOnlyString(attr.Name)
-		value := util.BytesToReadOnlyString(util.EscapeHTML(attr.Value.([]byte)))
-		list[name] = value
-	}
-
-	ast.DumpHelper(a, source, level, list, nil)
-}
-
-// KindAttributes is a NodeKind of the attributes block node.
-var ImgAttributes = ast.NewNodeKind("ImgAttributes")
-
-// Kind implements Node.Kind.
-func (a *inline) Kind() ast.NodeKind {
-	return ImgAttributes
-}
-
-type attrParser struct{}
-
-// Trigger implement parser.BlockParser interface.
-func (a *attrParser) Trigger() []byte {
-fmt.Println("dbg -- parser trigger")
-	return []byte{'{'}
-}
-
-// Open implement parser.InlineParser interface.
-func (a *attrParser) Open(parent ast.Node, reader text.Reader, pc parser.Context) (ast.Node, parser.State) {
-//fmt.Println("dbg --- found attributes")
-	// add attributes if defined
-	if attrs, ok := parser.ParseAttributes(reader); ok {
-		node := &inline{BaseInline: ast.BaseBlock{}}
-		for _, attr := range attrs {
-			node.SetAttribute(attr.Name, attr.Value)
-		}
-
-		return node, parser.NoChildren
-	}
-
-	return nil, parser.RequireParagraph
-}
-
-// Continue implement parser.BlockParser interface.
-func (a *attrParser) Continue(node ast.Node, reader text.Reader, pc parser.Context) parser.State {
-	return parser.Close
-}
-
-// Close implement parser.BlockParser interface.
-func (a *attrParser) Close(node ast.Node, reader text.Reader, pc parser.Context) {
-	// nothing to do
-}
-
-// CanInterruptParagraph implement parser.BlockParser interface.
-func (a *attrParser) CanInterruptParagraph() bool {
-	return true
-}
-
-// CanAcceptIndentedLine implement parser.BlockParser interface.
-func (a *attrParser) CanAcceptIndentedLine() bool {
-	return false
-}
-
+// transformer combines imgAttr node with img node
+/*
 type transformer struct{}
 
 // Transform implement parser.Transformer interface.
@@ -175,17 +135,37 @@ func (a *transformer) Transform(node *ast.Document, reader text.Reader, pc parse
 		attr.Parent().RemoveChild(attr.Parent(), attr)
 	}
 }
+*/
 
-type attrRender struct{}
+
+type ImgAttrHTMLRenderer struct {
+    html.Config
+}
+
+// NewStrikethroughHTMLRenderer returns a new StrikethroughHTMLRenderer.
+func NewImgAttrHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
+    r := &ImgAttrHTMLRenderer{
+        Config: html.NewConfig(),
+    }
+    for _, opt := range opts {
+        opt.SetHTMLOption(&r.Config)
+    }
+    return r
+}
 
 // RegisterFuncs implement renderer.NodeRenderer interface.
-func (a *attrRender) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+func (a *ImgAttrHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
 	// not render
-	reg.Register(KindAttributes,
+	reg.Register(KindImgAttr,
 		func(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 			return ast.WalkSkipChildren, nil
 		})
 }
+
+// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
+//func (r *StrikethroughHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
+//    reg.Register(ast.KindStrikethrough, r.renderStrikethrough)
+//}
 
 // extension defines a goldmark.Extender for markdown block attributes.
 type imgAttrExt struct{}
@@ -196,7 +176,7 @@ func (e *imgAttrExt) Extend(m goldmark.Markdown) {
 		util.Prioritized(NewImgAttrParser(), 500),
 	))
 	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewImgAttrHtmlRenderer(), 500),
+		util.Prioritized(NewImgAttrHTMLRenderer(), 500),
 	))
 }
 
@@ -204,4 +184,4 @@ func (e *imgAttrExt) Extend(m goldmark.Markdown) {
 var ImgAttrExt goldmark.Extender = new(imgAttrExt)
 
 // Enable is a goldmark.Option with block attributes support.
-var Enable = goldmark.WithExtensions(Extension)
+var Enable = goldmark.WithExtensions(ImgAttrExt)
