@@ -15,7 +15,7 @@ import (
 	"log"
 	"os"
 	"bytes"
-	"goDemo/gmark/goldmark/extAttr"
+	imgAttr "goDemo/gmark/goldmark/extAttr"
 	"goDemo/gmark/goldmark"
 	util "github.com/prr123/utility/utilLib"
 )
@@ -84,7 +84,7 @@ func main() {
 	// func Convert(source []byte, w io.Writer, opts ...parser.ParseOption) error
 //	err = goldmark.Convert(source, &buf, parser.WithContext(ctx))
 
-	md:= goldmark.New(attributes.Enable)
+	md:= goldmark.New(imgAttr.Enable)
 	err = md.Convert(source, &buf)
 	if err != nil {log.Fatalf("error -- convert: %v\n",err)}
 	log.Printf("*** success converting ***\n")
