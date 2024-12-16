@@ -16,7 +16,7 @@ import (
 	"goDemo/gmark/goldmark/ast"
 	"goDemo/gmark/goldmark/parser"
 	"goDemo/gmark/goldmark/renderer"
-	"goDemo/gmark/goldmark/renderer/html"
+//	"goDemo/gmark/goldmark/renderer/html"
 	"goDemo/gmark/goldmark/text"
 	"goDemo/gmark/goldmark/util"
 )
@@ -54,23 +54,6 @@ func NewImgAttr() *ImgAttr {
     return &ImgAttr{}
 }
 
-type imgAttrDelimiterProcessor struct {
-}
-
-func (p *imgAttrDelimiterProcessor) IsDelimiter(b byte) bool {
-	return b == '{'
-}
-
-func (p *imgAttrDelimiterProcessor) CanOpenCloser(opener, closer *parser.Delimiter) bool {
-	return false
-}
-
-func (p *imgAttrDelimiterProcessor) OnMatch(consumes int) ast.Node {
-	return NewImgAttr()
-}
-
-var defaultImgAttrDelimiterProcessor = &imgAttrDelimiterProcessor{}
-
 type imgAttrParser struct {}
 
 var defaultImgAttrParser = &imgAttrParser{}
@@ -85,31 +68,43 @@ func (s *imgAttrParser) Trigger() []byte {
 	return []byte{'{'}
 }
 
-func (s *imgAttrParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) ast.Node {
-	before := block.PrecendingCharacter()
-	line, segment := block.PeekLine()
-	node := parser.ScanDelimiter(line, before, 1, defaultImgAttrDelimiterProcessor)
-	if node == nil || node.OriginalLength > 2 || before == '{' {
-		return nil
-	}
+func (s *imgAttrParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) (node ast.Node) {
 
-	node.Segment = segment.WithStop(segment.Start + node.OriginalLength)
-	block.Advance(node.OriginalLength)
-	pc.PushDelimiter(node)
+	attrs, ok := parser.ParseAttributes(block);
+	if ok {
+		// need to create a node
+		//node := &block{BaseBlock: ast.BaseBlock{}}
+		node = &ImgAttr{BaseInline: ast.BaseInline{}}
+        for _, attr := range attrs {
+            node.SetAttribute(attr.Name, attr.Value)
+		}
+    }
+
 	return node
 }
+//	before := block.PrecendingCharacter()
+//	line, segment := block.PeekLine()
+//	node := parser.ScanDelimiter(line, before, 1, defaultImgAttrDelimiterProcessor)
+//	if node == nil || node.OriginalLength > 2 || before == '{' {
+//		return nil
+//	}
+
+//	node.Segment = segment.WithStop(segment.Start + node.OriginalLength)
+//	block.Advance(node.OriginalLength)
+//	pc.PushDelimiter(node)
 
 
 // transformer combines imgAttr node with img node
-/*
+
 type transformer struct{}
 
+var defaultTransformer = &transformer{}
 // Transform implement parser.Transformer interface.
 func (a *transformer) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
 	// collect all attributes block
 	var attributes = make([]ast.Node, 0, 1000)
 	_ = ast.Walk(node, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
-		if entering && node.Kind() == KindAttributes {
+		if entering && node.Kind() == KindImgAttr {
 			attributes = append(attributes, node)
 			return ast.WalkSkipChildren, nil
 		}
@@ -135,13 +130,14 @@ func (a *transformer) Transform(node *ast.Document, reader text.Reader, pc parse
 		attr.Parent().RemoveChild(attr.Parent(), attr)
 	}
 }
-*/
 
 
-type ImgAttrHTMLRenderer struct {
-    html.Config
-}
+type ImgAttrHTMLRenderer struct {}
+//    html.Config}
 
+var imgAttrHTMLRenderer = &ImgAttrHTMLRenderer{}
+
+/*
 // NewStrikethroughHTMLRenderer returns a new StrikethroughHTMLRenderer.
 func NewImgAttrHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
     r := &ImgAttrHTMLRenderer{
@@ -152,6 +148,8 @@ func NewImgAttrHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
     }
     return r
 }
+*/
+
 
 // RegisterFuncs implement renderer.NodeRenderer interface.
 func (a *ImgAttrHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -172,12 +170,13 @@ type imgAttrExt struct{}
 
 
 func (e *imgAttrExt) Extend(m goldmark.Markdown) {
-	m.Parser().AddOptions(parser.WithInlineParsers(
-		util.Prioritized(NewImgAttrParser(), 500),
-	))
-	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewImgAttrHTMLRenderer(), 500),
-	))
+	m.Parser().AddOptions(
+		parser.WithInlineParsers(util.Prioritized(NewImgAttrParser(), 500)),
+		parser.WithASTTransformers(util.Prioritized(defaultTransformer, 500)),
+	)
+	m.Renderer().AddOptions(
+		renderer.WithNodeRenderers(util.Prioritized(imgAttrHTMLRenderer, 500)),
+	)
 }
 
 // Extension is a goldmark.Extender with markdown block attributes support.
