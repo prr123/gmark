@@ -16,7 +16,6 @@ import (
 	"goDemo/gmark/goldmark/ast"
 	"goDemo/gmark/goldmark/parser"
 	"goDemo/gmark/goldmark/renderer"
-//	"goDemo/gmark/goldmark/renderer/html"
 	"goDemo/gmark/goldmark/text"
 	"goDemo/gmark/goldmark/util"
 )
@@ -28,7 +27,7 @@ type ImgAttr struct {
 
 // Dump implements Node.Dump.
 func (a *ImgAttr) Dump(source []byte, level int) {
-fmt.Printf("dbg dump -- entering dump\n")
+//fmt.Printf("dbg dump -- entering dump\n")
 	attrs := a.Attributes()
 	list := make(map[string]string, len(attrs))
 	for _, attr := range attrs {
@@ -41,7 +40,7 @@ fmt.Printf("dbg dump -- entering dump\n")
 }
 
 
-// KindStrikethrough is a NodeKind of the Strikethrough node.
+// KindImgAttr is a NodeKind of the image attribute node.
 var KindImgAttr = ast.NewNodeKind("ImgAttr")
 
 // Kind implements Node.Kind.
@@ -70,10 +69,15 @@ func (s *imgAttrParser) Trigger() []byte {
 
 func (s *imgAttrParser) Parse(parent ast.Node, block text.Reader, pc parser.Context) (node ast.Node) {
 
+fmt.Printf("dbg Parse -- text: %s\n", block.Source())
+	pos, Seg := block.Position()
+fmt.Printf("pos: %d seg: %s\n",pos, block.Value(Seg) )
+
 	attrs, ok := parser.ParseAttributes(block);
+fmt.Printf("ok: %t\n", ok)
+
 	if ok {
 		// need to create a node
-		//node := &block{BaseBlock: ast.BaseBlock{}}
 		node = &ImgAttr{BaseInline: ast.BaseInline{}}
         for _, attr := range attrs {
             node.SetAttribute(attr.Name, attr.Value)
@@ -82,17 +86,6 @@ func (s *imgAttrParser) Parse(parent ast.Node, block text.Reader, pc parser.Cont
 
 	return node
 }
-//	before := block.PrecendingCharacter()
-//	line, segment := block.PeekLine()
-//	node := parser.ScanDelimiter(line, before, 1, defaultImgAttrDelimiterProcessor)
-//	if node == nil || node.OriginalLength > 2 || before == '{' {
-//		return nil
-//	}
-
-//	node.Segment = segment.WithStop(segment.Start + node.OriginalLength)
-//	block.Advance(node.OriginalLength)
-//	pc.PushDelimiter(node)
-
 
 // transformer combines imgAttr node with img node
 
@@ -101,7 +94,7 @@ type transformer struct{}
 var defaultTransformer = &transformer{}
 // Transform implement parser.Transformer interface.
 func (a *transformer) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
-	// collect all attributes block
+	// collect all attributes nodes
 	var attributes = make([]ast.Node, 0, 1000)
 	_ = ast.Walk(node, func(node ast.Node, entering bool) (ast.WalkStatus, error) {
 		if entering && node.Kind() == KindImgAttr {
@@ -113,15 +106,15 @@ func (a *transformer) Transform(node *ast.Document, reader text.Reader, pc parse
 	})
 
 	// set attributes to next block sibling
-//fmt.Printf("dbg -- attribute nodes: %d\n", len(attributes))
+fmt.Printf("dbg -- attribute nodes: %d\n", len(attributes))
 	for _, attr := range attributes {
+
 		prev := attr.PreviousSibling()
-		if prev != nil && prev.Type() == ast.TypeBlock &&
-			!attr.HasBlankPreviousLines() {
+		if prev != nil && prev.Kind() == ast.KindImage  {
 			for _, attr := range attr.Attributes() {
 				if _, exist := prev.Attribute(attr.Name); !exist {
 					prev.SetAttribute(attr.Name, attr.Value)
-//fmt.Printf("dbg -- attr: %s - %s\n", attr.Name, attr.Value)
+fmt.Printf("dbg -- attr: %s - %v\n", attr.Name, attr.Value)
 				}
 			}
 		}
@@ -137,19 +130,6 @@ type ImgAttrHTMLRenderer struct {}
 
 var imgAttrHTMLRenderer = &ImgAttrHTMLRenderer{}
 
-/*
-// NewStrikethroughHTMLRenderer returns a new StrikethroughHTMLRenderer.
-func NewImgAttrHTMLRenderer(opts ...html.Option) renderer.NodeRenderer {
-    r := &ImgAttrHTMLRenderer{
-        Config: html.NewConfig(),
-    }
-    for _, opt := range opts {
-        opt.SetHTMLOption(&r.Config)
-    }
-    return r
-}
-*/
-
 
 // RegisterFuncs implement renderer.NodeRenderer interface.
 func (a *ImgAttrHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
@@ -159,11 +139,6 @@ func (a *ImgAttrHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegiste
 			return ast.WalkSkipChildren, nil
 		})
 }
-
-// RegisterFuncs implements renderer.NodeRenderer.RegisterFuncs.
-//func (r *StrikethroughHTMLRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegisterer) {
-//    reg.Register(ast.KindStrikethrough, r.renderStrikethrough)
-//}
 
 // extension defines a goldmark.Extender for markdown block attributes.
 type imgAttrExt struct{}
