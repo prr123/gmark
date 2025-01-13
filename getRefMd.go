@@ -21,7 +21,7 @@ import (
 func main() {
 
 	numarg := len(os.Args)
-    flags:=[]string{"dbg", "in", "out", "list"}
+    flags:=[]string{"dbg", "in", "out"}
 
     useStr := " /in=infile /out=outfile [/dbg]"
     helpStr := "markdown to html conversion program"
@@ -44,10 +44,6 @@ func main() {
     dbg:= false
     _, ok := flagMap["dbg"]
     if ok {dbg = true}
-
-    list:= false
-    _, ok = flagMap["list"]
-    if ok {list = true}
 
     inFil := ""
     inval, ok := flagMap["in"]
@@ -72,26 +68,19 @@ func main() {
 
 	inFilnam := "md/" + inFil + ".md"
 	outFilnam := "md/" + outFil + "_out.md"
-	listFilnam := "md/" + outFil + "_list.yaml"
 
 	if dbg {
 		fmt.Printf("input:  %s\n", inFilnam)
 		fmt.Printf("output: %s\n", outFilnam)
-		if list {fmt.Printf("list:    %s\n", listFilnam)}
 	}
 
 	source, err := os.ReadFile(inFilnam)
 	if err != nil {log.Fatalf("error -- open inp file: %v\n", err)}
 
-	// get file references
-	fileList, err := preproc.GetMdFiles(source)
-	if err != nil {log.Fatalf("error -- GetMdFiles: %v\n", err)}
-
-	err = preproc.CreateYaml(fileList, listFilnam)
-	if err != nil {log.Fatalf("error -- Create Yaml List: %v\n", err)}
-
 	dest, err := preproc.SubstMd(source)
 	if err != nil {log.Fatalf("error -- Substituting: %v\n", err)}
+
+fmt.Printf("dbg -- %s", dest)
 
 	// save
 	err = os.WriteFile(outFilnam, dest, 0666)
