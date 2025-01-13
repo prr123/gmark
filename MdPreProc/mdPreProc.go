@@ -11,11 +11,15 @@ package mdPreProc
 import (
 	"fmt"
 	"os"
+
+	csvLib "github.com/prr123/gocsv/csvLib"
+
 )
 
 func SubstMd(src []byte) ([]byte, error) {
 
-//	var tableNams []string
+
+	dbg:=true
 	dest := make([]byte, len(src) + 1024*16)
 
 	npos := 0
@@ -23,6 +27,8 @@ func SubstMd(src []byte) ([]byte, error) {
 	filSt := 0
 	extSt := 0
 	attrSt := 0
+	filNam := ""
+	ext := ""
 //	filEnd := 0
 	for i:=0; i< len(src) -1; i++ {
 		switch istate {
@@ -47,13 +53,37 @@ func SubstMd(src []byte) ([]byte, error) {
 		case 2:
 			if src[i] == ']' {
 				istate = 3
-				filNam := string(src[filSt:i])
-				ext := string(src[extSt:i])
+				filNam = string(src[filSt:i])
+				ext = string(src[extSt:i])
+				if dbg {
+					fmt.Printf("dbg -- ref: %s - %s\n",filNam, ext)
+				}
+			}
+
+		case 3:
+			if src[i] == '\n' || src[i] == '{' {
 				switch ext {
 				case "csv":
-					data := "csv not yet implemented\n"
-					copy(dest[npos: npos+len(data)], data)
-					npos += len(data)
+					inData, err := os.ReadFile("md/csv/" + filNam)
+					if err != nil {return nil, fmt.Errorf("cannot read: %v", err)}
+				    lines, err := csvLib.ProcTable(inData)
+				    if err != nil {return nil, fmt.Errorf("ProcTable: %v\n", err)}
+
+				    csvLib.PrintLines(lines)
+
+				    tables, err := csvLib.GetTables(lines)
+    				if err != nil {return nil, fmt.Errorf("GetTable: %v\n", err)}
+/*
+    fmt.Printf("tables: %d\n", len(tables))
+    for i:=0; i< len(tables); i++ {
+        csvLib.PrintTable(tables[i])
+    }
+*/
+					mdData, err := csvLib.Table2Md(tables[0])
+					if err != nil {return nil, fmt.Errorf("Table2Md: %v\n", err)}
+
+					copy(dest[npos: npos+len(mdData)], mdData)
+					npos += len(mdData)
 
 				case "md":
 					data, err := os.ReadFile("md/" + filNam)
@@ -66,19 +96,24 @@ func SubstMd(src []byte) ([]byte, error) {
 				}
 			}
 
-		case 3:
 			if src[i] == '{' {
 				istate = 4
 				attrSt = i
 			} else {
 				istate = 0
-				dest[npos] = src[i]
-				npos++
+				if src[i] != '\n' {
+					dest[npos] = src[i]
+					npos++
+				}
 			}
+
 		case 4:
 			if src[i] == '}' {
 				istate = 0
-				attrStr := string(src[attrSt+1:i])
+				attrStr := string(src[attrSt:i+1])
+//				copy(dest[npos: npos+len(attrStr)], src[attrSt:i+1])
+//				npos += len(attrStr)
+
 fmt.Printf("dbg -- table attr: %s\n",attrStr)
 			}
 		default:
@@ -153,7 +188,7 @@ func CreateYaml(filList []string, listFilnam string) error {
 	fmt.Fprintln(lFil,"files:")
 
 	for i:=0; i<len(filList); i++ {
-		fmt.Fprintf(lFil,"-%s:", filList[i])
+		fmt.Fprintf(lFil," - %s: ", filList[i])
 		_, err := os.Stat(filList[i])
 		if err != nil {
 			fmt.Fprintln(lFil,"false")
