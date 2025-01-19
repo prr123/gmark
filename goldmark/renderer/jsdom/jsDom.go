@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"unicode"
-	"unicode/utf8"
+//	"unicode"
+//	"unicode/utf8"
 	"time"
 
 	"goDemo/gmark/goldmark/ast"
@@ -69,8 +69,8 @@ site.render = function () {
 type Config struct {
 	Writer              Writer
 	HardWraps           bool
-	EastAsianLineBreaks EastAsianLineBreaks
-	XHTML               bool
+//	EastAsianLineBreaks EastAsianLineBreaks
+//	XHTML               bool
 	Unsafe              bool
 }
 
@@ -79,8 +79,8 @@ func NewConfig() Config {
 	return Config{
 		Writer:              DefaultWriter,
 		HardWraps:           false,
-		EastAsianLineBreaks: EastAsianLineBreaksNone,
-		XHTML:               false,
+//		EastAsianLineBreaks: EastAsianLineBreaksNone,
+//		XHTML:               false,
 		Unsafe:              false,
 	}
 }
@@ -90,10 +90,10 @@ func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 	switch name {
 	case optHardWraps:
 		c.HardWraps = value.(bool)
-	case optEastAsianLineBreaks:
-		c.EastAsianLineBreaks = value.(EastAsianLineBreaks)
-	case optXHTML:
-		c.XHTML = value.(bool)
+//	case optEastAsianLineBreaks:
+//		c.EastAsianLineBreaks = value.(EastAsianLineBreaks)
+//	case optXHTML:
+//		c.XHTML = value.(bool)
 	case optUnsafe:
 		c.Unsafe = value.(bool)
 	case optTextWriter:
@@ -103,7 +103,7 @@ func (c *Config) SetOption(name renderer.OptionName, value interface{}) {
 
 // An Option interface sets options for HTML based renderers.
 type Option interface {
-	SetJsDomOption(*Config)
+	SetJsDOMOption(*Config)
 }
 
 // TextWriter is an option name used in WithWriter.
@@ -117,7 +117,7 @@ func (o *withWriter) SetConfig(c *renderer.Config) {
 	c.Options[optTextWriter] = o.value
 }
 
-func (o *withWriter) SetJsDomOption(c *Config) {
+func (o *withWriter) SetJsDOMOption(c *Config) {
 	c.Writer = o.value
 }
 
@@ -140,7 +140,7 @@ func (o *withHardWraps) SetConfig(c *renderer.Config) {
 	c.Options[optHardWraps] = true
 }
 
-func (o *withHardWraps) SetJsDomOption(c *Config) {
+func (o *withHardWraps) SetJsDOMOption(c *Config) {
 	c.HardWraps = true
 }
 
@@ -153,20 +153,21 @@ func WithHardWraps() interface {
 	return &withHardWraps{}
 }
 
+/*
 // EastAsianLineBreaks is an option name used in WithEastAsianLineBreaks.
 const optEastAsianLineBreaks renderer.OptionName = "EastAsianLineBreaks"
 
 // A EastAsianLineBreaks is a style of east asian line breaks.
 type EastAsianLineBreaks int
 
-const (
+//const (
 	//EastAsianLineBreaksNone renders line breaks as it is.
-	EastAsianLineBreaksNone EastAsianLineBreaks = iota
+//	EastAsianLineBreaksNone EastAsianLineBreaks = iota
 	// EastAsianLineBreaksSimple follows east_asian_line_breaks in Pandoc.
-	EastAsianLineBreaksSimple
+//	EastAsianLineBreaksSimple
 	// EastAsianLineBreaksCSS3Draft follows CSS text level3 "Segment Break Transformation Rules" with some enhancements.
-	EastAsianLineBreaksCSS3Draft
-)
+//	EastAsianLineBreaksCSS3Draft
+//)
 
 func (b EastAsianLineBreaks) softLineBreak(thisLastRune rune, siblingFirstRune rune) bool {
 	switch b {
@@ -225,6 +226,7 @@ func eastAsianLineBreaksCSS3DraftSoftLineBreak(thisLastRune rune, siblingFirstRu
 	return true
 }
 
+/*
 type withEastAsianLineBreaks struct {
 	eastAsianLineBreaksStyle EastAsianLineBreaks
 }
@@ -268,6 +270,7 @@ func WithXHTML() interface {
 } {
 	return &withXHTML{}
 }
+*/
 
 // Unsafe is an option name used in WithUnsafe.
 const optUnsafe renderer.OptionName = "Unsafe"
@@ -279,7 +282,7 @@ func (o *withUnsafe) SetConfig(c *renderer.Config) {
 	c.Options[optUnsafe] = true
 }
 
-func (o *withUnsafe) SetJsDomOption(c *Config) {
+func (o *withUnsafe) SetJsDOMOption(c *Config) {
 	c.Unsafe = true
 }
 
@@ -312,7 +315,7 @@ func NewRenderer(nam string, dbg bool, opts ...Option) renderer.NodeRenderer {
 	r.name = nam
 	r.dbg = dbg
 	for _, opt := range opts {
-		opt.SetJsDomOption(&r.Config)
+		opt.SetJsDOMOption(&r.Config)
 	}
 	return r
 }
@@ -1282,7 +1285,7 @@ func (r *Renderer) renderEmphasis(w util.BufWriter, source []byte, node ast.Node
 		elNam := fmt.Sprintf("el%d",r.count)
 		node.SetAttributeString("el",elNam)
 		elStr:= "let " + elNam + "=document.createElement('"+tag+"');\n"
-		node.SetAttributeString("el",elNam)
+//		node.SetAttributeString("el",elNam)
 		_, _ = w.WriteString(elStr)
 		if n.Attributes() != nil {RenderElAttributes(w, node, EmphasisAttributeFilter, elNam)}
 		// child
@@ -1503,27 +1506,38 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 	elNam := fmt.Sprintf("el%d",r.count)
 	n.SetAttributeString("el",elNam)
 
-	value := segment.Value(source)
+//	value := segment.Value(source)
 	valStr := string(segment.Value(source))
 
-	if n.IsRaw() {
-//		_, _ = w.WriteString(segment.Value(source))
-//		r.Writer.RawWrite(w, segment.Value(source))
 
-	} else {
-
-		if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
-				valStr += "\n"
+	if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
+		valStr += "\n"
+// todo
 //				_, _ = w.WriteString("<br>\n")
+	}
+
+	DatEl := elNam + "Txt"
+	datStr := "const " + DatEl + "= `" + valStr + "`;\n"
+	_, _ = w.WriteString(datStr)
+	txtStr := "const "+elNam+ "=document.createTextNode(" + DatEl + ");\n"
+	_, _ = w.WriteString(txtStr)
+
+	return ast.WalkContinue, nil
+}
+
+
+/*
 		} else if n.SoftLineBreak() {
 			if r.EastAsianLineBreaks != EastAsianLineBreaksNone && len(valStr) != 0 {
+			if len(valStr) != 0 {
 				sibling := node.NextSibling()
 				if sibling != nil && sibling.Kind() == ast.KindText {
+
 					if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
 						thisLastRune := util.ToRune(value, len(value)-1)
 						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
 						if r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
-//							_ = w.WriteByte('\n')
+							_ = w.WriteByte('\n')
 							valStr += "\n"
 						}
 					}
@@ -1535,15 +1549,9 @@ func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, en
 
 		}
 	}
+*/
 // fmt.Printf("text el %s: %s\n",elNam, valStr)
-	DatEl := elNam + "Txt"
-	datStr := "const " + DatEl + "= `" + valStr + "`;\n"
-	_, _ = w.WriteString(datStr)
-	txtStr := "const "+elNam+ "=document.createTextNode(" + DatEl + ");\n"
-	_, _ = w.WriteString(txtStr)
 
-	return ast.WalkContinue, nil
-}
 
 func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
