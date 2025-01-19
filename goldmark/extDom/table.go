@@ -95,7 +95,7 @@ func (o *withTableJsDOMOptions) SetConfig(c *renderer.Config) {
 func (o *withTableJsDOMOptions) SetTableOption(c *TableConfig) {
 	if o.value != nil {
 		for _, v := range o.value {
-			v.SetJsDomOption(&c.Config)
+			v.SetJsDOMOption(&c.Config)
 		}
 	}
 }
@@ -390,7 +390,7 @@ func (r *TableJsDOMRenderer) renderTable(
         tblStr := "let " + tblNam + "= document.createElement('table');\n"
         _, _ = w.WriteString(tblStr)
 
-        tblStyl := "Object.assign(table.style, mdStyle.table);\n"
+        tblStyl := "Object.assign(" + tblNam + ".style, mdStyle.table);\n"
         _, _ = w.WriteString(tblStyl)
         if n.Attributes() != nil {jsdom.RenderElAttributes(w, n, TableAttributeFilter, tblNam)}
 
