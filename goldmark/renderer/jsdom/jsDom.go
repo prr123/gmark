@@ -467,7 +467,7 @@ func (r *Renderer) renderBlockquote(
 		p2Str := "Object.assign(" + elNam + ".style, mdStyle.block);\n"
 		_, _ = w.WriteString(p2Str)
 		if node.Attributes() != nil {
-fmt.Printf("dbg -- renderattr\n")
+//if r.dbg {fmt.Println("dbg -- renderelattr")}
 			RenderElAttributes(w, node, BlockquoteAttributeFilter, elNam)
 		}
 	} else {
@@ -731,52 +731,13 @@ func (r *Renderer) renderListItem(w util.BufWriter, source []byte, node ast.Node
 
 }
 
-/*
-		fc := node.FirstChild()
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- par el: %s kind: %s children: %d first kind:%s count:%d\n", elNam, node.Kind().String(), node.ChildCount(), fc.Kind().String(), fc.ChildCount())
-			_, _ = w.WriteString(dbgStr)
-		}
-
-
-		if node.ChildCount() != 1 {
-
-			if fc == nil {
-				elTxtStr := elNam + ".textContent='\n';\n"
-				_, _ = w.WriteString(elTxtStr)
-				return ast.WalkSkipChildren, nil
-			}
-
-		}
-
-		// if text block
-		if _,ok :=fc.(*ast.TextBlock); ok {
-//			return ast.WalkStop, fmt.Errorf("Li Item -- fc not a textblock!!")
-
-			fc.SetAttributeString("el",elNam)
-			r.renderTextChildren(w,source,fc, true)
-
-			pnode := node.Parent()
-			if pnode == nil {return ast.WalkStop, fmt.Errorf("Li Item -- no pnode")}
-			parElNam, res := pnode.AttributeString("el")
-			if !res {return ast.WalkStop, fmt.Errorf("Li Item -- no parent el name: %s!", elNam)}
-			apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-			_, _ = w.WriteString(apStr)
-			return ast.WalkSkipChildren, nil
-		}
-//par
-		if _,ok :=fc.(*ast.Paragraph); ok {
-
-		}
-*/
-
-
 
 // ParagraphAttributeFilter defines attribute names which paragraph elements can have.
 var ParagraphAttributeFilter = GlobalAttributeFilter
 
 func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	if entering {
+//if r.dbg {fmt.Println("dbg -- entering paragraph!")}
 		r.count++
 		elNam := fmt.Sprintf("el%d",r.count)
 		node.SetAttributeString("el",elNam)
@@ -788,9 +749,6 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, node ast.Nod
 		_, _ = w.WriteString(p2Str)
 
 		if node.Attributes() != nil {RenderElAttributes(w, node, ParagraphAttributeFilter, elNam)}
-
-		// render child nodes
-		r.renderTextChildren(w,source,node, true)
 
 		pnode := node.Parent()
 		if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
@@ -804,10 +762,11 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, node ast.Nod
 		_, _ = w.WriteString(elStr)
 
 	}
-	return ast.WalkSkipChildren, nil
+	return ast.WalkContinue, nil
+//	return ast.WalkSkipChildren, nil
 }
 
-
+/*
 func (r *Renderer) renderTextChildren(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 
 //seems redundant
@@ -845,13 +804,6 @@ func (r *Renderer) renderTextChildren(w util.BufWriter, source []byte, node ast.
 	istate := 0
 //	for c := node.FirstChild(); c != nil; c = c.NextSibling() {
 	for c := fc; c != nil; c = c.NextSibling() {
-/*
-		if r.dbg {
-				parElNam, res := c.Parent().AttributeString("el")
-				dbgStr := fmt.Sprintf("//dbg -- par %t child: %s parent: %s\n", res, c.Kind().String(), parElNam)
-				_, _ = w.WriteString(dbgStr)
-			}
-*/
 		switch c.(type) {
 
 		case *ast.Text:
@@ -1011,114 +963,41 @@ func (r *Renderer) renderTextChildren(w util.BufWriter, source []byte, node ast.
 
 	return ast.WalkSkipChildren, nil
 }
-
-
-//new
-func (r *Renderer) renderTextBlock1(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-
-	if entering {
-		text := make([]byte,0,1024)
-		r.count++
-		elNam := fmt.Sprintf("el%d",r.count)
-		node.SetAttributeString("el",elNam)
-
-		for c := node.FirstChild(); c != nil; c = c.NextSibling() {
-			if _, ok := c.(*ast.Text); !ok {
-				break
-			}
-			segment := c.(*ast.Text).Segment
-			value := segment.Value(source)
-			if r.dbg {
-				valStr := fmt.Sprintf("//dbg -- child[%d]: %s\n", len(value),string(value))
-				_, _ = w.WriteString(valStr)
-			}
-// ! softline break
-
-			if bytes.HasSuffix(value, []byte("\n")) {
-				value[len(value) -1] = ' '
-			}
-			text = append(text, value...)
-		}
-
-		text[len(text) -1] = '\n'
-
-		txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-			_, _ = w.WriteString(txtEl)
-
-	} else {
-		pnode := node.Parent()
-		if pnode == nil {return ast.WalkStop, fmt.Errorf("txt -- no pnode")}
-		elNam, res := node.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("txt -- no el name!")}
-		parElNam, res := pnode.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("txt -- no parent el name: %s!", elNam)}
-
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
-			_, _ = w.WriteString(dbgStr)
-		}
-		elStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
-		_, _ = w.WriteString(elStr)
-	}
-	return ast.WalkSkipChildren, nil
-}
+*/
 
 func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	// temp
 	if entering {
-		pnode := node.Parent()
-		parElNam, res := pnode.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("txtBlock -- no parent el name: %s!", parElNam)}
-		node.SetAttributeString("el",parElNam)
-		// render child nodes
-		r.renderTextChildren(w,source,node, true)
+fmt.Println("dbg -- entering text block!")
 	}
-	return ast.WalkSkipChildren, nil
-}
-
-
-func (r *Renderer) renderTextBlock2(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	// temp
-	if entering {
-//fmt.Printf("dbg -- textBlock entering \n")
-		r.count++
-		elNam := fmt.Sprintf("el%d",r.count)
-		node.SetAttributeString("el",elNam)
-		elStr:= "let " + elNam + "=document.createElement('div');\n"
-		node.SetAttributeString("el",elNam)
-		_, _ = w.WriteString(elStr)
-
-		if node.NextSibling() != nil && node.FirstChild() != nil {
-//fmt.Printf("dbg -- need to add newline \n")
-//add textnode	_ = w.WriteByte('\n')
+    if !entering {
+fmt.Println("dbg -- leaving text block")
+    	if node.NextSibling() != nil && node.FirstChild() != nil {
+//fmt.Println("dbg -- text block next sib and first child exist")
 			r.count++
-			elNamtxt := fmt.Sprintf("el%d",r.count)
+			elNam := fmt.Sprintf("el%d",r.count)
+			pnode := node.Parent()
+			if pnode == nil {return ast.WalkStop, fmt.Errorf("br -- no pnode")}
+			parElNam, res := pnode.AttributeString("el")
+			if !res {return ast.WalkStop, fmt.Errorf("HR -- no parent el name: %s!", elNam)}
+			if r.dbg {
+				dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
+				_, _ = w.WriteString(dbgStr)
+			}
+			elStr:= "let " + elNam + "=document.createElement('br');\n"
 			node.SetAttributeString("el",elNam)
-			txtStr := "const "+elNamtxt+ "=document.createTextNode('\n');\n"
-			_, _ = w.WriteString(txtStr)
-			eltxtStr := elNam + ".appendChild(" + elNamtxt + ");\n"
-			_, _ = w.WriteString(eltxtStr)
-		}
-	}
-	if !entering {
-//fmt.Printf("dbg -- textBlock exiting \n")
-		pnode := node.Parent()
-		if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
-		elNam, res := node.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("Par -- no el name!")}
-		parElNam, res := pnode.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("Par -- no parent el name: %s!", elNam)}
+			_, _ = w.WriteString(elStr)
 
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
-			_, _ = w.WriteString(dbgStr)
-		}
-		elStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
-		_, _ = w.WriteString(elStr)
-	}
-
-	return ast.WalkContinue, nil
+			if node.Attributes() != nil {
+				RenderElAttributes(w, node, ThematicAttributeFilter, elNam)
+			}
+			elappStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
+			_, _ = w.WriteString(elappStr)
+    	}
+    }
+    return ast.WalkContinue, nil
 }
+
 
 // ThematicAttributeFilter defines attribute names which hr elements can have.
 var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
@@ -1132,23 +1011,19 @@ var ThematicAttributeFilter = GlobalAttributeFilter.Extend(
 func (r *Renderer) renderThematicBreak(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	//<hr>
 	if !entering {
-		pnode := node.Parent()
-		if pnode == nil {return ast.WalkStop, fmt.Errorf("HR -- no pnode")}
-		elNam, res := node.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("HR -- no el name!")}
-		parElNam, res := pnode.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("HR -- no parent el name: %s!", elNam)}
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
-			_, _ = w.WriteString(dbgStr)
-		}
-		elStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
-		_, _ = w.WriteString(elStr)
 		return ast.WalkContinue, nil
 	}
 	// entering
+	pnode := node.Parent()
+	if pnode == nil {return ast.WalkStop, fmt.Errorf("HR -- no pnode")}
+	parElNam, res := pnode.AttributeString("el")
+	if !res {return ast.WalkStop, fmt.Errorf("HR -- no parent el name: %s!", parElNam.(string))}
 	r.count++
 	elNam := fmt.Sprintf("el%d",r.count)
+	if r.dbg {
+		dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
+		_, _ = w.WriteString(dbgStr)
+	}
 	elStr:= "let " + elNam + "=document.createElement('hr');\n"
 	node.SetAttributeString("el",elNam)
 	_, _ = w.WriteString(elStr)
@@ -1156,6 +1031,8 @@ func (r *Renderer) renderThematicBreak(w util.BufWriter, source []byte, node ast
 	if node.Attributes() != nil {
 		RenderElAttributes(w, node, ThematicAttributeFilter, elNam)
 	}
+	elappStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
+	_, _ = w.WriteString(elappStr)
 	return ast.WalkContinue, nil
 }
 
@@ -1385,6 +1262,10 @@ var ImageAttributeFilter = GlobalAttributeFilter.Extend(
 
 func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 
+	// this should never happen ...
+	if !entering {return ast.WalkContinue, nil}
+
+
 	n := node.(*ast.Image)
 	r.imgCount++
 	elNam := fmt.Sprintf("img%d",r.imgCount)
@@ -1418,29 +1299,26 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 	}
 
 
-//	if !entering {
-		pnode := node.Parent()
-		if pnode == nil {return ast.WalkStop, fmt.Errorf("Img -- no pnode")}
-		parElNam, res := pnode.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("Img -- no parent el name: %s!", elNam)}
+	pnode := node.Parent()
+	if pnode == nil {return ast.WalkStop, fmt.Errorf("Img -- no pnode")}
+	parElNam, res := pnode.AttributeString("el")
+	if !res {return ast.WalkStop, fmt.Errorf("Img -- no parent el name: %s!", elNam)}
 
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
-			_, _ = w.WriteString(dbgStr)
-		}
-		appStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-		_, _ = w.WriteString(appStr)
+	if r.dbg {
+		dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
+		_, _ = w.WriteString(dbgStr)
+	}
+	appStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
+	_, _ = w.WriteString(appStr)
 
-//		return ast.WalkContinue, nil
-//	}
 
 	
 	return ast.WalkSkipChildren, nil
 //	return ast.WalkContinue, nil
 }
 
-func (r *Renderer) renderRawHTML(
-	w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+func (r *Renderer) renderRawHTML(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+
 	if !entering {
 		pnode := node.Parent()
 		if pnode == nil {return ast.WalkStop, fmt.Errorf("RawHtml -- no pnode")}
@@ -1455,151 +1333,118 @@ func (r *Renderer) renderRawHTML(
 		}
 		elStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
 		_, _ = w.WriteString(elStr)
-		return ast.WalkSkipChildren, nil
-	}
-		r.count++
-		elNam := fmt.Sprintf("el%d",r.count)
-		elStr:= "let " + elNam + "=document.createElement('div');\n"
-		node.SetAttributeString("el",elNam)
-		_, _ = w.WriteString(elStr)
-
-	if r.Unsafe {
-		n := node.(*ast.RawHTML)
-		l := n.Segments.Len()
-		//elnam.innerhtml =
-		el2Str := elNam + ".innerhtml = `\n"
-		_, _ = w.WriteString(el2Str)
-		for i := 0; i < l; i++ {
-			segment := n.Segments.At(i)
-			_, _ = w.Write(segment.Value(source))
-		}
-		_, _ = w.WriteString("`\n")
-
-		return ast.WalkSkipChildren, nil
-	}
-	_, _ = w.WriteString("<!-- raw HTML omitted -->")
-	return ast.WalkSkipChildren, nil
-}
-
-func (r *Renderer) renderText(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	if !entering {
-		pnode := node.Parent()
-		if pnode == nil {return ast.WalkStop, fmt.Errorf("Text -- no pnode")}
-		elNam, res := node.AttributeString("el")
-
-		if !res {return ast.WalkStop, fmt.Errorf("Text -- no el name!")}
-		parElNam, res := pnode.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("Text -- no parent el name: %s!", elNam)}
-
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
-			_, _ = w.WriteString(dbgStr)
-		}
-		elStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
-		_, _ = w.WriteString(elStr)
-
 		return ast.WalkContinue, nil
+//		return ast.WalkSkipChildren, nil
 	}
-	n := node.(*ast.Text)
-	segment := n.Segment
+
+// entering
 	r.count++
 	elNam := fmt.Sprintf("el%d",r.count)
+	elStr:= "let " + elNam + "=document.createElement('div');\n"
+	node.SetAttributeString("el",elNam)
+	_, _ = w.WriteString(elStr)
+
+	n := node.(*ast.RawHTML)
+	l := n.Segments.Len()
+	el2Str := elNam + ".innerhtml = `\n"
+	_, _ = w.WriteString(el2Str)
+	for i := 0; i < l; i++ {
+		segment := n.Segments.At(i)
+		_, _ = w.Write(segment.Value(source))
+	}
+	_, _ = w.WriteString("`\n")
+	_, _ = w.WriteString("<!-- raw HTML omitted -->")
+	return ast.WalkContinue, nil
+}
+
+func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+
+    if !entering {
+//fmt.Println("dbg -- leaving rendering text")
+        return ast.WalkContinue, nil
+    }
+
+//fmt.Println("dbg -- enter rend text:")
+    n := node.(*ast.Text)
+	pnode := node.Parent()
+	if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
+//fmt.Printf("dbg -- parent: %s", pnode.Kind())
+	parElNam, res := pnode.AttributeString("el")
+	if !res {return ast.WalkStop, fmt.Errorf("Text -- no el name!")}
+//fmt.Printf(" par elnam: %s", parElNam.(string))
+//fmt.Println()
+
+	segment := n.Segment
+	r.count++
+	elNam := fmt.Sprintf("txtel%d",r.count)
 	n.SetAttributeString("el",elNam)
 
 //	value := segment.Value(source)
 	valStr := string(segment.Value(source))
 
-
+//fmt.Printf("dbg -- HL Br %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
 	if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
 		valStr += "\n"
-// todo
-//				_, _ = w.WriteString("<br>\n")
 	}
 
-	DatEl := elNam + "Txt"
-	datStr := "const " + DatEl + "= `" + valStr + "`;\n"
-	_, _ = w.WriteString(datStr)
-	txtStr := "const "+elNam+ "=document.createTextNode(" + DatEl + ");\n"
+	fmt.Printf("dbg -- rend txt: %s\n", valStr)
+	DatStr :=  "`" + valStr + "`"
+	//_, _ = w.WriteString(txtStr)
+	txtStr := "const "+elNam+ "=document.createTextNode(" + DatStr + ");\n"
 	_, _ = w.WriteString(txtStr)
 
+	apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
+	_, _ = w.WriteString(apStr)
 	return ast.WalkContinue, nil
 }
 
-
+// todo
+//				_, _ = w.WriteString("<br>\n")
 /*
-		} else if n.SoftLineBreak() {
-			if r.EastAsianLineBreaks != EastAsianLineBreaksNone && len(valStr) != 0 {
-			if len(valStr) != 0 {
-				sibling := node.NextSibling()
-				if sibling != nil && sibling.Kind() == ast.KindText {
+	if len(valStr) != 0 {
+		sibling := node.NextSibling()
+		if sibling != nil && sibling.Kind() == ast.KindText {
 
-					if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
-						thisLastRune := util.ToRune(value, len(value)-1)
-						siblingFirstRune, _ := utf8.DecodeRune(siblingText)
-						if r.EastAsianLineBreaks.softLineBreak(thisLastRune, siblingFirstRune) {
-							_ = w.WriteByte('\n')
-							valStr += "\n"
-						}
-					}
-				}
-			} else {
-				valStr += "\n"
-//				_ = w.WriteByte('\n')
-			}
-
-		}
-	}
+//		if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
 */
-// fmt.Printf("text el %s: %s\n",elNam, valStr)
-
 
 func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-	if !entering {
-		pnode := node.Parent()
-		if pnode == nil {return ast.WalkStop, fmt.Errorf("String -- no pnode")}
-		elNam, res := node.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("String -- no el name!")}
-		parElNam, res := pnode.AttributeString("el")
-		if !res {return ast.WalkStop, fmt.Errorf("String -- no parent el name: %s!", elNam)}
 
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
-			_, _ = w.WriteString(dbgStr)
-		}
-		elStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
-		_, _ = w.WriteString(elStr)
-		return ast.WalkContinue, nil
-	}
+//	if !entering {return ast.WalkContinue, nil}
 
-	if r.dbg {fmt.Println("dbg -- string")}
+//	if r.dbg {fmt.Println("dbg -- string")}
+	pnode := node.Parent()
+	if pnode == nil {return ast.WalkStop, fmt.Errorf("String -- no pnode")}
+	parElNam, res := pnode.AttributeString("el")
+	if !res {return ast.WalkStop, fmt.Errorf("String -- no parent el name: %s!", parElNam.(string))}
+
 
 	valStr :=""
 	r.count++
-	elNam := fmt.Sprintf("el%d",r.count)
+	elNam := fmt.Sprintf("strel%d",r.count)
 	node.SetAttributeString("el",elNam)
+	if r.dbg {
+		dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
+		_, _ = w.WriteString(dbgStr)
+	}
 
 	n := node.(*ast.String)
-	if n.IsCode() {
-		valStr = string(n.Value)
-	} else {
-		if n.IsRaw() {
-//			r.Writer.RawWrite(w, n.Value)
-			valStr = string(n.Value)
-		} else {
-//			r.Writer.Write(w, n.Value)
-			valStr = string(n.Value)
-		}
-	}
-	datEl := elNam+"txt"
-	datStr := "const " + datEl + "= `" + valStr + "`;\n"
-	_, _ = w.WriteString(datStr)
-	txtStr := "let "+elNam+ "=document.createTextNode(" + datEl + ");\n"
+	valStr = string(n.Value)
+
+//	fmt.Printf("dbg -- rend str: %s\n", valStr)
+
+	datEl := "`" + valStr + "`"
+	txtStr := "let " + elNam + "=document.createTextNode(" + datEl + ");\n"
 	_, _ = w.WriteString(txtStr)
+
+	apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
+	_, _ = w.WriteString(apStr)
 
 	return ast.WalkContinue, nil
 }
 
 func (r *Renderer) renderTexts(w util.BufWriter, source []byte, n ast.Node) {
+fmt.Println("dbg -- renderTexts")
 	for c := n.FirstChild(); c != nil; c = c.NextSibling() {
 		if s, ok := c.(*ast.String); ok {
 			_, _ = r.renderString(w, source, s, true)
@@ -1640,10 +1485,10 @@ fmt.Printf("dbg -- renderAttr elNam %s\n", elNam)
 			value = fmt.Sprintf("%d",typed)
 		//case float32
 		}
-fmt.Printf("dbg -- render attr %s - %s\n", attr.Name, attr.Value)
+//fmt.Printf("dbg -- render attr %s - %s\n", attr.Name, attr.Value)
 
 		attStr := elNam + "." + string(attr.Name) + "='" + value + "';\n"
-fmt.Printf("dbg -- render attrStr: %s\n", attStr)
+//fmt.Printf("dbg -- render attrStr: %s\n", attStr)
 		_, _ = w.WriteString(attStr)
 	}
 }
