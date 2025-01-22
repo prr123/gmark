@@ -1181,10 +1181,12 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
 //	value := segment.Value(source)
 	valStr := string(segment.Value(source))
 
-//fmt.Printf("dbg -- HL Br %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
+//fmt.Printf("dbg -- text: HLB %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
 
-	endStr := "\n"
-	if !(n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps)) {
+	endStr := ""
+	if (n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps)) {
+		endStr = "\n"
+	} else {
 		sibling := node.NextSibling()
 		if sibling != nil && sibling.Kind() == ast.KindText {
 			if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
@@ -1192,8 +1194,13 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
 			}
 		}
 	}
+	if r.dbg {
+		dbgStr := fmt.Sprintf("// dbg -- text el: HLB %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
+		_, _ = w.WriteString(dbgStr)
+	}
+//parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
 
-	fmt.Printf("dbg -- rend txt: %s\n", valStr)
+//	fmt.Printf("dbg -- rend txt: %s\n", valStr)
 	DatStr :=  "`" + valStr + endStr + "`"
 	//_, _ = w.WriteString(txtStr)
 	txtStr := "const "+elNam+ "=document.createTextNode(" + DatStr + ");\n"
@@ -1209,7 +1216,7 @@ func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, 
 
 //	if !entering {return ast.WalkContinue, nil}
 
-//	if r.dbg {fmt.Println("dbg -- string")}
+	if r.dbg {fmt.Println("dbg -- string")}
 	pnode := node.Parent()
 	if pnode == nil {return ast.WalkStop, fmt.Errorf("String -- no pnode")}
 	parElNam, res := pnode.AttributeString("el")
@@ -1221,7 +1228,7 @@ func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, 
 	elNam := fmt.Sprintf("strel%d",r.count)
 	node.SetAttributeString("el",elNam)
 	if r.dbg {
-		dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
+		dbgStr := fmt.Sprintf("// dbg -- string el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
 		_, _ = w.WriteString(dbgStr)
 	}
 
