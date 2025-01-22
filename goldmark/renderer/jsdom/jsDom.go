@@ -754,10 +754,10 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, node ast.Nod
 		if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
 		parElNam, res := pnode.AttributeString("el")
 		if !res {return ast.WalkStop, fmt.Errorf("Par -- no parent el name: %s!", elNam)}
-		if r.dbg {
-			dbgStr := fmt.Sprintf("// dbg -- par el: %s kind: %s parent:%s kind:%s\n", elNam, node.Kind().String(), parElNam, pnode.Kind().String())
-			_, _ = w.WriteString(dbgStr)
-		}
+//		if r.dbg {
+//			dbgStr := fmt.Sprintf("// dbg -- par el: %s kind: %s parent:%s kind:%s\n", elNam, node.Kind().String(), parElNam, pnode.Kind().String())
+//			_, _ = w.WriteString(dbgStr)
+//		}
 		elStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
 		_, _ = w.WriteString(elStr)
 
@@ -1167,7 +1167,8 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
     n := node.(*ast.Text)
 	pnode := node.Parent()
 	if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
-//fmt.Printf("dbg -- parent: %s", pnode.Kind())
+	dbgStr := fmt.Sprintf("// dbg -- text parent: %s\n", pnode.Kind())
+_, _ = w.WriteString(dbgStr)
 	parElNam, res := pnode.AttributeString("el")
 	if !res {return ast.WalkStop, fmt.Errorf("Text -- no el name!")}
 //fmt.Printf(" par elnam: %s", parElNam.(string))
@@ -1181,27 +1182,32 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
 //	value := segment.Value(source)
 	valStr := string(segment.Value(source))
 
-//fmt.Printf("dbg -- text: HLB %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
+//fmt.Printf("dbg -- text: %s HLB %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
 
-	endStr := ""
+	endStr := "`"
 	if (n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps)) {
-		endStr = "\n"
+		endStr = "\n`"
 	} else {
+_, _ = w.WriteString("// dbg -- no harlinebreak etc\n")
 		sibling := node.NextSibling()
 		if sibling != nil && sibling.Kind() == ast.KindText {
 			if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
-				endStr = " "
+_, _ = w.WriteString("// dbg -- found sibling with text\n")
+				endStr = " `"
 			}
+		} else {
+_, _ = w.WriteString("// dbg -- no sibling\n")
+			endStr = "\n`"
 		}
 	}
 	if r.dbg {
-		dbgStr := fmt.Sprintf("// dbg -- text el: HLB %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
+		dbgStr := fmt.Sprintf("// dbg -- text %s: HLB %t SLB %t HWraps %t\n", elNam, n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
 		_, _ = w.WriteString(dbgStr)
 	}
 //parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
 
 //	fmt.Printf("dbg -- rend txt: %s\n", valStr)
-	DatStr :=  "`" + valStr + endStr + "`"
+	DatStr :=  "`" + valStr + endStr
 	//_, _ = w.WriteString(txtStr)
 	txtStr := "const "+elNam+ "=document.createTextNode(" + DatStr + ");\n"
 	_, _ = w.WriteString(txtStr)
