@@ -766,204 +766,6 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, node ast.Nod
 //	return ast.WalkSkipChildren, nil
 }
 
-/*
-func (r *Renderer) renderTextChildren(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
-
-//seems redundant
-	if !entering {
-//fmt.Printf("dbg -- children return\n")
-		return ast.WalkContinue, nil
-	}
-
-	var text []byte
-	parElNam, res := node.AttributeString("el")
-	if !res {return ast.WalkStop, fmt.Errorf("txt -- no el name!")}
-
-	if r.dbg {
-		dbgStr := fmt.Sprintf("// dbg -- pelNam: %s children: %d\n", parElNam, node.ChildCount())
-		_, _ = w.WriteString(dbgStr)
-	}
-
-	fc := node.FirstChild()
-	if node.ChildCount() == 1 {
-		if fc == nil {
-			elTxtStr := parElNam.(string) + ".textContent='\n';\n"
-			_, _ = w.WriteString(elTxtStr)
-			return ast.WalkSkipChildren, nil
-		}
-		if _,ok :=fc.(*ast.Text); ok {
-        	segment := fc.(*ast.Text).Segment
-        	value := segment.Value(source)
-
-			elTxtStr := parElNam.(string) + ".textContent=`" + string(value) + "`;\n"
-			_, _ = w.WriteString(elTxtStr)
-			return ast.WalkSkipChildren, nil
-		}
-	}
-
-	istate := 0
-//	for c := node.FirstChild(); c != nil; c = c.NextSibling() {
-	for c := fc; c != nil; c = c.NextSibling() {
-		switch c.(type) {
-
-		case *ast.Text:
-        	segment := c.(*ast.Text).Segment
-        	value := segment.Value(source)
-
-//			if r.dbg {
-//				dbgStr := fmt.Sprintf("//dbg -- text (state: %d) val: %s\n", istate, value)
-//				_, _ = w.WriteString(dbgStr)
-//			}
-
-			switch istate {
-			// first text
-			case 0:
-				text = make([]byte, 0, 1024)
-				text = append(text, value...)
-				istate = 1
-			// adj text
-			case 1:
-				text = append(text, value...)
-			default:
-
-			}
-
-       case *ast.Emphasis:
-			en :=c.(*ast.Emphasis)
-			chn := en.FirstChild()
-        	segment := chn.(*ast.Text).Segment
-        	value := segment.Value(source)
-			tag := "em"
-			if en.Level == 2 {tag = "strong"}
-//			if r.dbg {
-//				dbgStr := fmt.Sprintf("//dbg -- emp (state: %d) lev: %d val: %s\n", istate, en.Level, value)
-//				_, _ = w.WriteString(dbgStr)
-//			}
-
-			switch istate{
-//			case 0:
-			// end text
-			case 1:
-				istate = 0
-				r.count++
-				elNam := fmt.Sprintf("el%d",r.count)
-				c.SetAttributeString("el",elNam)
-
-				txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-				_, _ = w.WriteString(txtEl)
-				apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-				_, _ = w.WriteString(apStr)
-				text = nil
-				fallthrough
-			default:
-				r.count++
-				elNam := fmt.Sprintf("el%d",r.count)
-				elStr := "let " + elNam + "=document.createElement('" + tag + "');\n"
-				_, _ = w.WriteString(elStr)
-				eltxt := elNam + ".textContent=`" + string(value) + "`;\n"
-				_, _ = w.WriteString(eltxt)
-				apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-				_, _ = w.WriteString(apStr)
-			}
-
-		case *ast.CodeSpan:
-
-			if istate == 1 {
-				istate = 0
-				r.count++
-				elNam := fmt.Sprintf("el%d",r.count)
-				txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-				_, _ = w.WriteString(txtEl)
-				apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-				_, _ = w.WriteString(apStr)
-				text = nil
-			}
-
-			r.renderCodeSpan(w,source,c.(*ast.CodeSpan), true)
-
-		case *ast.Image:
-			if istate == 1 {
-				istate = 0
-				r.count++
-				elNam := fmt.Sprintf("el%d",r.count)
-				txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-				_, _ = w.WriteString(txtEl)
-				apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-				_, _ = w.WriteString(apStr)
-				text = nil
-			}
-
-			r.renderImage(w,source,c.(*ast.Image), true)
-
-
-		case *ast.Link:
-
-			if istate == 1 {
-				istate = 0
-				r.count++
-				elNam := fmt.Sprintf("el%d",r.count)
-				txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-				_, _ = w.WriteString(txtEl)
-				apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-				_, _ = w.WriteString(apStr)
-				text = nil
-			}
-
-			r.renderLink(w,source,c.(*ast.Link), true)
-
-		case *ast.RawHTML:
-			if istate == 1 {
-				istate = 0
-				r.count++
-				elNam := fmt.Sprintf("el%d",r.count)
-				txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-				_, _ = w.WriteString(txtEl)
-				apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-				_, _ = w.WriteString(apStr)
-				text = nil
-			}
-
-			r.renderRawHTML(w,source,c.(*ast.RawHTML), true)
-
-		case *ast.String:
-			if istate == 1 {
-				istate = 0
-				r.count++
-				elNam := fmt.Sprintf("el%d",r.count)
-				txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-				_, _ = w.WriteString(txtEl)
-				apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-				_, _ = w.WriteString(apStr)
-				text = nil
-			}
-
-			r.renderString(w,source,c.(*ast.String), true)
-
-		default:
-			if r.dbg {
-				dbgStr := fmt.Sprintf("//dbg -- other type: %s\n", c.Kind().String())
-				_, _ = w.WriteString(dbgStr)
-			}
-
-		}
-
-	}
-
-	if text != nil {
-			r.count++
-			elNam := fmt.Sprintf("el%d",r.count)
-			node.SetAttributeString("el",elNam)
-
-			txtEl := "const " + elNam + "=document.createTextNode(`"+string(text)+"`);\n"
-			_, _ = w.WriteString(txtEl)
-			apStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
-			_, _ = w.WriteString(apStr)
-			text = nil
-	}
-
-	return ast.WalkSkipChildren, nil
-}
-*/
 
 func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	// temp
@@ -1311,8 +1113,6 @@ func (r *Renderer) renderImage(w util.BufWriter, source []byte, node ast.Node, e
 	appStr := parElNam.(string) + ".appendChild(" + elNam + ");\n"
 	_, _ = w.WriteString(appStr)
 
-
-	
 	return ast.WalkSkipChildren, nil
 //	return ast.WalkContinue, nil
 }
@@ -1334,7 +1134,6 @@ func (r *Renderer) renderRawHTML(w util.BufWriter, source []byte, node ast.Node,
 		elStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
 		_, _ = w.WriteString(elStr)
 		return ast.WalkContinue, nil
-//		return ast.WalkSkipChildren, nil
 	}
 
 // entering
@@ -1383,12 +1182,19 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
 	valStr := string(segment.Value(source))
 
 //fmt.Printf("dbg -- HL Br %t SLB %t HWraps %t\n",  n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
-	if n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps) {
-		valStr += "\n"
+
+	endStr := "\n"
+	if !(n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps)) {
+		sibling := node.NextSibling()
+		if sibling != nil && sibling.Kind() == ast.KindText {
+			if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
+				endStr = " "
+			}
+		}
 	}
 
 	fmt.Printf("dbg -- rend txt: %s\n", valStr)
-	DatStr :=  "`" + valStr + "`"
+	DatStr :=  "`" + valStr + endStr + "`"
 	//_, _ = w.WriteString(txtStr)
 	txtStr := "const "+elNam+ "=document.createTextNode(" + DatStr + ");\n"
 	_, _ = w.WriteString(txtStr)
@@ -1398,15 +1204,6 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
 	return ast.WalkContinue, nil
 }
 
-// todo
-//				_, _ = w.WriteString("<br>\n")
-/*
-	if len(valStr) != 0 {
-		sibling := node.NextSibling()
-		if sibling != nil && sibling.Kind() == ast.KindText {
-
-//		if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
-*/
 
 func (r *Renderer) renderString(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 
