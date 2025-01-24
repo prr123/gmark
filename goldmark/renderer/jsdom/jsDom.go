@@ -1163,7 +1163,7 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
         return ast.WalkContinue, nil
     }
 
-//fmt.Println("dbg -- enter rend text:")
+_, _ = w.WriteString("dbg -- enter rendertext\n")
     n := node.(*ast.Text)
 	pnode := node.Parent()
 	if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
@@ -1190,10 +1190,14 @@ _, _ = w.WriteString(dbgStr)
 	} else {
 _, _ = w.WriteString("// dbg -- no harlinebreak etc\n")
 		sibling := node.NextSibling()
-		if sibling != nil && sibling.Kind() == ast.KindText {
-			if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
+		if sibling != nil {
+			if sibling.Kind() == ast.KindText {
+				if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
 _, _ = w.WriteString("// dbg -- found sibling with text\n")
-				endStr = " `"
+					endStr = " `"
+				}
+			} else {
+_, _ = w.WriteString("// dbg -- sibling but no text\n")
 			}
 		} else {
 _, _ = w.WriteString("// dbg -- no sibling\n")
