@@ -299,7 +299,7 @@ type FootnoteConfig struct {
 	BacklinkClass []byte
 
 	// BacklinkHTML is an HTML content for footnote backlinks.
-	BacklinkJsDom []byte
+	BacklinkJsDOM []byte
 }
 
 // FootnoteOption interface is a functional option interface for the extension.
@@ -364,7 +364,7 @@ func (o *withFootnoteJsDOMOptions) SetFootnoteOption(c *FootnoteConfig) {
 }
 
 // WithFootnoteHTMLOptions is functional option that wraps goldmark HTMLRenderer options.
-func WithFootnoteJsDOMOptions(opts ...html.Option) FootnoteOption {
+func WithFootnoteJsDOMOptions(opts ...jsdom.Option) FootnoteOption {
 	return &withFootnoteJsDOMOptions{opts}
 }
 
@@ -482,31 +482,32 @@ func WithFootnoteBacklinkClass[T []byte | string](a T) FootnoteOption {
 	return &withFootnoteBacklinkClass{[]byte(a)}
 }
 
-/*
-const optFootnoteBacklinkHTML renderer.OptionName = "FootnoteBacklinkHTML"
 
-type withFootnoteBacklinkHTML struct {
+const optFootnoteBacklinkJsDOM renderer.OptionName = "FootnoteBacklinkJsDOM"
+
+type withFootnoteBacklinkJsDOM struct {
 	value []byte
 }
 
-func (o *withFootnoteBacklinkHTML) SetConfig(c *renderer.Config) {
-	c.Options[optFootnoteBacklinkHTML] = o.value
+func (o *withFootnoteBacklinkJsDOM) SetConfig(c *renderer.Config) {
+	c.Options[optFootnoteBacklinkJsDOM] = o.value
 }
 
-func (o *withFootnoteBacklinkHTML) SetFootnoteOption(c *FootnoteConfig) {
-	c.BacklinkHTML = o.value
+func (o *withFootnoteBacklinkJsDOM) SetFootnoteOption(c *FootnoteConfig) {
+	c.BacklinkJsDOM = o.value
 }
 
 // WithFootnoteBacklinkHTML is an HTML content for footnote backlinks.
-func WithFootnoteBacklinkHTML[T []byte | string](a T) FootnoteOption {
-	return &withFootnoteBacklinkHTML{[]byte(a)}
+func WithFootnoteBacklinkJsDOM[T []byte | string](a T) FootnoteOption {
+	return &withFootnoteBacklinkJsDOM{[]byte(a)}
 }
-*/
+
 
 // FootnoteHTMLRenderer is a renderer.NodeRenderer implementation that
 // renders FootnoteLink nodes.
 type FootnoteJsDOMRenderer struct {
 	FootnoteConfig
+	fnCount int
 }
 
 // NewFootnoteHTMLRenderer returns a new FootnoteHTMLRenderer.
@@ -528,18 +529,55 @@ func (r *FootnoteJsDOMRenderer) RegisterFuncs(reg renderer.NodeRendererFuncRegis
 	reg.Register(ast.KindFootnoteList, r.renderFootnoteList)
 }
 
-func (r *FootnoteJsDOMRenderer) renderFootnoteLink(
-	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *FootnoteJsDOMRenderer) renderFootnoteLink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
 		n := node.(*ast.FootnoteLink)
+fmt.Printf("dbg -- FN link Index: %d\n", n.Index)
 		is := strconv.Itoa(n.Index)
 
 //		_, _ = w.WriteString(`<sup id="`)
 //		_, _ = w.Write(r.idPrefix(node))
 //		_, _ = w.WriteString(`fnref`)
 		if n.RefIndex > 0 {
+		dbgStr := fmt.Sprintf("// dbg -- FN link RevIndex: %v\n", n.RefIndex)
+_, _ = w.WriteString(dbgStr)
 //			_, _ = w.WriteString(fmt.Sprintf("%v", n.RefIndex))
 		}
+
+		pnode := n.Parent()
+        if pnode == nil {return gast.WalkStop, fmt.Errorf("no pnode")}
+        parElNam, res := pnode.AttributeString("el")
+        if !res {return gast.WalkStop, fmt.Errorf("fn: no parent el name: %s!", parElNam)}
+
+		r.fnCount++
+        fnNam := fmt.Sprintf("fn%d",r.fnCount)
+        n.SetAttributeString("el",fnNam)
+        fnStr := "let " + fnNam + "= document.createElement('sup');\n"
+        _, _ = w.WriteString(fnStr)
+		fnStr = fnNam + ".id='" + fnNam + "';\n"
+        _, _ = w.WriteString(fnStr)
+
+        fnStyl := "Object.assign(" + fnNam + ".style, mdStyle.footnote);\n"
+        _, _ = w.WriteString(fnStyl)
+
+        r.fnCount++
+		refElNam := fmt.Sprintf("ref%d",r.fnCount)
+		refElStr:="let " + refElNam + "= document.createElement('a');\n"
+        _, _ = w.WriteString(refElStr)
+		refStr := refElNam + ".href='fnref" + is + "';\n"
+        _, _ = w.WriteString(refStr)
+
+		fnStr = refElNam + ".textContent='" + is + "';\n"
+        _, _ = w.WriteString(fnStr)
+
+		apStr:= fnNam + ".appendChild(" + refElNam + ");\n"
+        _, _ = w.WriteString(apStr)
+
+		elapStr := parElNam.(string) + ".appendChild(" + fnNam + ");\n"
+        _, _ = w.WriteString(elapStr)
+
+//        if n.Attributes() != nil {jsdom.RenderElAttributes(w, n, TableAttributeFilter, tblNam)}
+ 
 /*
 		_ = w.WriteByte(':')
 		_, _ = w.WriteString(is)
@@ -563,11 +601,13 @@ func (r *FootnoteJsDOMRenderer) renderFootnoteLink(
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteJsDOMRenderer) renderFootnoteBacklink(
-	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+func (r *FootnoteJsDOMRenderer) renderFootnoteBacklink(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+
 	if entering {
+fmt.Printf("dbg -- enter FootnoteBackLink\n")
 		n := node.(*ast.FootnoteBacklink)
-		is := strconv.Itoa(n.Index)
+//		is := strconv.Itoa(n.Index)
+
 //		_, _ = w.WriteString(`&#160;<a href="#`)
 //		_, _ = w.Write(r.idPrefix(node))
 //		_, _ = w.WriteString(`fnref`)
@@ -593,9 +633,25 @@ func (r *FootnoteJsDOMRenderer) renderFootnoteBacklink(
 
 func (r *FootnoteJsDOMRenderer) renderFootnote(
 	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
+
 	n := node.(*ast.Footnote)
 	is := strconv.Itoa(n.Index)
+
+fmt.Printf("dbg -- FN Nr: %d\n", n.Index)
+
 	if entering {
+		r.fnCount++
+        liNam := fmt.Sprintf("fnli%d",r.fnCount)
+        n.SetAttributeString("el",liNam)
+
+		elStr := "let " + liNam + "=document.createElement('li');\n"
+        _, _ = w.WriteString(elStr)
+		elapStr:= liNam + ".id='fnref" + is + "';\n"
+        _, _ = w.WriteString(elapStr)
+
+        fnlStyl := "Object.assign(" + liNam + ".style, mdStyle.fnlistitem);\n"
+        _, _ = w.WriteString(fnlStyl)
+
 /*
 		_, _ = w.WriteString(`<li id="`)
 		_, _ = w.Write(r.idPrefix(node))
@@ -603,31 +659,63 @@ func (r *FootnoteJsDOMRenderer) renderFootnote(
 		_, _ = w.WriteString(is)
 		_, _ = w.WriteString(`"`)
 */
-		if node.Attributes() != nil {
-			jsdom.RenderAttributes(w, node, jsdom.ListItemAttributeFilter)
-		}
-//		_, _ = w.WriteString(">\n")
 	} else {
-//		_, _ = w.WriteString("</li>\n")
+		pnode := n.Parent()
+        if pnode == nil {return gast.WalkStop, fmt.Errorf("no pnode")}
+//        parElNam, res := pnode.AttributeString("el")
+//        if !res {return gast.WalkStop, fmt.Errorf("fn: no parent name: %s!", parElNam)}
+        olNam, res := pnode.AttributeString("ol")
+        if !res {return gast.WalkStop, fmt.Errorf("fn: no ol name: %s!", olNam)}
+        liNam, res := n.AttributeString("el")
+        if !res {return gast.WalkStop, fmt.Errorf("fn: li name: %s!", liNam)}
+		elapStr := olNam.(string) + ".appendChild(" + liNam.(string) + ");\n"
+        _, _ = w.WriteString(elapStr)
 	}
 	return gast.WalkContinue, nil
 }
 
-func (r *FootnoteJsDOMRenderer) renderFootnoteList(
-	w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
-	if entering {
-//		_, _ = w.WriteString(`<div class="footnotes" role="doc-endnotes"`)
-		if node.Attributes() != nil {
-			jsdom.RenderAttributes(w, node, jsdom.GlobalAttributeFilter)
-		}
-//		_ = w.WriteByte('>')
+func (r *FootnoteJsDOMRenderer) renderFootnoteList(w util.BufWriter, source []byte, node gast.Node, entering bool) (gast.WalkStatus, error) {
 
-//		if r.Config.XHTML {
-//		_, _ = w.WriteString("\n<hr>\n")
-//		_, _ = w.WriteString("<ol>\n")
+	if entering {
+fmt.Printf("dbg -- enter renderFNlist node: %s\n",node.Kind().String())
+		n := node
+		r.fnCount++
+        fnlNam := fmt.Sprintf("fnl%d",r.fnCount)
+        n.SetAttributeString("el",fnlNam)
+
+        fnlStr := "let " + fnlNam + "= document.createElement('div');\n"
+        _, _ = w.WriteString(fnlStr)
+        fnlStyl := "Object.assign(" + fnlNam + ".style, mdStyle.fnlist);\n"
+        _, _ = w.WriteString(fnlStyl)
+		fnl2Str := fnlNam + ".id='FNList';\n"
+        _, _ = w.WriteString(fnl2Str)
+
+		r.fnCount++
+        hrNam := fmt.Sprintf("hr%d",r.fnCount)
+        hrStr := "let " + hrNam + "= document.createElement('hr');\n"
+        _, _ = w.WriteString(hrStr)
+		elapStr := fnlNam + ".appendChild(" +hrNam + ");\n" 
+        _, _ = w.WriteString(elapStr)
+		r.fnCount++
+        olNam := fmt.Sprintf("ol%d",r.fnCount)
+        n.SetAttributeString("ol",olNam)
+        olStr := "let " + olNam + "= document.createElement('ol');\n"
+        _, _ = w.WriteString(olStr)
 	} else {
-//		_, _ = w.WriteString("</ol>\n")
-//		_, _ = w.WriteString("</div>\n")
+		pnode := node.Parent()
+        if pnode == nil {return gast.WalkStop, fmt.Errorf("no pnode")}
+        parElNam, res := pnode.AttributeString("el")
+        if !res {return gast.WalkStop, fmt.Errorf("fn: no parent el name: %s!", parElNam.(string))}
+        elNam, res := node.AttributeString("el")
+        if !res {return gast.WalkStop, fmt.Errorf("fn: no el name: %s!", elNam.(string))}
+        olNam, res := node.AttributeString("ol")
+        if !res {return gast.WalkStop, fmt.Errorf("fn: no ol name: %s!", olNam.(string))}
+
+		olapStr := elNam.(string) + ".appendChild(" + olNam.(string) + ");\n"
+        _, _ = w.WriteString(olapStr)
+
+		elapStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
+        _, _ = w.WriteString(elapStr)
 	}
 	return gast.WalkContinue, nil
 }
@@ -694,6 +782,6 @@ func (e *footnote) Extend(m goldmark.Markdown) {
 		),
 	)
 	m.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(NewFootnoteHTMLRenderer(e.options...), 500),
+		util.Prioritized(NewFootnoteJsDOMRenderer(e.options...), 500),
 	))
 }
