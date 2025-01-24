@@ -92,7 +92,7 @@ func main() {
 
 	// save
 	err = os.WriteFile(outFilnam, buf.Bytes(), 0666)
-	if err != nil {log.Fatalf("error -- write file: %v\n")}
+	if err != nil {log.Fatalf("error -- write file: %v\n", err)}
 
 	log.Println("*** success ***")
 }
