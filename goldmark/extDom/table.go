@@ -423,7 +423,7 @@ var TableHeaderAttributeFilter = jsdom.GlobalAttributeFilter.Extend(
 
 func (r *TableJsDOMRenderer) renderTableHeader(w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-fmt.Println("dbg -- entering table header!")
+//fmt.Println("dbg -- entering table header!")
         pnode := n.Parent()
         if pnode == nil {return gast.WalkStop, fmt.Errorf("table header: no pnode")}
         tblNam, res := pnode.AttributeString("tbl")
@@ -444,7 +444,7 @@ fmt.Println("dbg -- entering table header!")
         r.rcount++
         rowNam := fmt.Sprintf("row%d",r.rcount)
         n.SetAttributeString("row",rowNam)
-        hdRowStr := "let " + rowNam + " = " + tblHdStr + ".insertRow();\n"
+        hdRowStr := "let " + rowNam + " = " + tblHdNam + ".insertRow();\n"
         _, _ = w.WriteString(hdRowStr)
 
 		// assign style
@@ -490,10 +490,10 @@ var TableRowAttributeFilter = jsdom.GlobalAttributeFilter.Extend(
 func (r *TableJsDOMRenderer) renderTableRow(
 	w util.BufWriter, source []byte, n gast.Node, entering bool) (gast.WalkStatus, error) {
 	if entering {
-fmt.Println("dbg -- entering table row!")
+//fmt.Println("dbg -- entering table row!")
         pnode := n.Parent()
         if pnode == nil {return gast.WalkStop, fmt.Errorf("table header: no pnode")}
-fmt.Printf("dbg -- par: %s\n",pnode.Kind().String())
+//fmt.Printf("dbg -- par: %s\n",pnode.Kind().String())
 
         tblBodyNam, res := pnode.AttributeString("body")
        	if !res {return gast.WalkStop, fmt.Errorf("Table Row: no table body name! par: %s", pnode.Kind().String())}
@@ -574,7 +574,7 @@ func (r *TableJsDOMRenderer) renderTableCell(w util.BufWriter, source []byte, no
 //	if n.Parent().Kind() == ast.KindTableHeader {tag = "th"}
 
 	if entering {
-fmt.Println("dbg -- entering table cell!")
+// fmt.Println("dbg -- entering table cell!")
         pnode := n.Parent()
         if pnode == nil {return gast.WalkStop, fmt.Errorf("table cell: no pnode")}
         tblRowNam, res := pnode.AttributeString("row")
