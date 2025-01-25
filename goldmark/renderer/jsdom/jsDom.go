@@ -770,7 +770,7 @@ func (r *Renderer) renderParagraph(w util.BufWriter, source []byte, node ast.Nod
 func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
 	// temp
 	if entering {
-fmt.Println("dbg -- entering text block!")
+//fmt.Println("dbg -- entering text block!")
 	}
     if !entering {
 fmt.Println("dbg -- leaving text block")
@@ -1163,7 +1163,7 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
         return ast.WalkContinue, nil
     }
 
-_, _ = w.WriteString("dbg -- enter rendertext\n")
+//_, _ = w.WriteString("// dbg -- enter rendertext\n")
     n := node.(*ast.Text)
 	pnode := node.Parent()
 	if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
