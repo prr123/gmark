@@ -12,4 +12,7 @@ let mdStyle = {
 	ul: {margin: '0 0 0 10px'},
 	ol: {margin: '0 0 0 10px'},
 	li: {listStylePosition: 'outside', margin: '0 0 0 30px'},
+    table: {border: '1px solid purple', borderCollapse: 'collapse', },
+    th: {border: '2px solid red', borderCollapse: 'collapse', width: '100px'},
+    td: {border: '1px solid black', borderCollapse: 'collapse', padding: '5px 10px', textAlign: 'center'},
 };
