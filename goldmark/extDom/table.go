@@ -390,7 +390,7 @@ func (r *TableJsDOMRenderer) renderTable(
         tblStr := "let " + tblNam + "= document.createElement('table');\n"
         _, _ = w.WriteString(tblStr)
 
-        tblStyl := "Object.assign(" + tblNam + ".style, mdStyle.table);\n"
+        tblStyl := "if(mdStyle.hasOwnProperty('table')){Object.assign(" + tblNam + ".style, mdStyle.table)};\n"
         _, _ = w.WriteString(tblStyl)
         if n.Attributes() != nil {jsdom.RenderElAttributes(w, n, TableAttributeFilter, tblNam)}
 
@@ -399,15 +399,15 @@ func (r *TableJsDOMRenderer) renderTable(
         parElNam, res := pnode.AttributeString("el")
         if !res {return gast.WalkStop, fmt.Errorf("Table: no parent el name: %s!", parElNam)}
 
+/*
         if r.dbg {
             dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", tblNam, parElNam, pnode.Kind().String())
             _, _ = w.WriteString(dbgStr)
         }
+*/
         appStr := parElNam.(string) + ".appendChild(" + tblNam + ");\n"
         _, _ = w.WriteString(appStr)
 
-//	} else {
-//		_, _ = w.WriteString("</table>\n")
 	}
 	return gast.WalkContinue, nil
 }
@@ -428,12 +428,12 @@ func (r *TableJsDOMRenderer) renderTableHeader(w util.BufWriter, source []byte, 
         if pnode == nil {return gast.WalkStop, fmt.Errorf("table header: no pnode")}
         tblNam, res := pnode.AttributeString("tbl")
         if !res {return gast.WalkStop, fmt.Errorf("Heading: no table name! %s", pnode.Kind().String())}
-
+/*
         if r.dbg {
             dbgStr := fmt.Sprintf("// dbg -- tbl: %s kind:%s\n", tblNam, pnode.Kind().String())
             _, _ = w.WriteString(dbgStr)
         }
-
+*/
 		// let theader = tbl.createTHead();
 		tblHdNam := tblNam.(string) + "Hd"
 //        n.SetAttributeString("tblHd",tblHdNam)
@@ -457,12 +457,12 @@ func (r *TableJsDOMRenderer) renderTableHeader(w util.BufWriter, source []byte, 
 //		_, _ = w.WriteString("<tr>\n") // Header <tr> has no separate handle
 
 	} else {
-fmt.Println("dbg -- exit table header!")
+//fmt.Println("dbg -- exit table header!")
 //		_, _ = w.WriteString("</tr>\n")
 //		_, _ = w.WriteString("</thead>\n")
 		if n.NextSibling() != nil {
-			ns := n.NextSibling()
-fmt.Printf("dbg -- sibling: %s\n", ns.Kind().String())
+//			ns := n.NextSibling()
+//fmt.Printf("dbg -- sibling: %s\n", ns.Kind().String())
 	        pnode := n.Parent()
     	    if pnode == nil {return gast.WalkStop, fmt.Errorf("table header: no pnode")}
         	tblNam, res := pnode.AttributeString("tbl")
@@ -498,25 +498,21 @@ func (r *TableJsDOMRenderer) renderTableRow(
         tblBodyNam, res := pnode.AttributeString("body")
        	if !res {return gast.WalkStop, fmt.Errorf("Table Row: no table body name! par: %s", pnode.Kind().String())}
 
+/*
         if r.dbg {
             dbgStr := fmt.Sprintf("// dbg -- tbl: %s kind:%s\n", tblBodyNam.(string), pnode.Kind().String())
             _, _ = w.WriteString(dbgStr)
         }
+*/
         r.rcount++
         rowNam := fmt.Sprintf("row%d",r.rcount)
         n.SetAttributeString("row",rowNam)
 
         RowStr := "let " + rowNam + " = " + tblBodyNam.(string) + ".insertRow();\n"
         _, _ = w.WriteString(RowStr)
-//		_, _ = w.WriteString("<tr")
-/*
-	} else {
+        tblStyl := "if(mdStyle.hasOwnProperty('tr')){Object.assign(" + rowNam + ".style, mdStyle.tr)};\n"
+        _, _ = w.WriteString(tblStyl)
 
-		_, _ = w.WriteString("</tr>\n")
-		if n.Parent().LastChild() == n {
-			_, _ = w.WriteString("</tbody>\n")
-		}
-*/
 	}
 	return gast.WalkContinue, nil
 }
@@ -579,63 +575,20 @@ func (r *TableJsDOMRenderer) renderTableCell(w util.BufWriter, source []byte, no
         if pnode == nil {return gast.WalkStop, fmt.Errorf("table cell: no pnode")}
         tblRowNam, res := pnode.AttributeString("row")
         if !res {return gast.WalkStop, fmt.Errorf("TableCell: no table row name! %s", pnode.Kind().String())}
-
+/*
         if r.dbg {
             dbgStr := fmt.Sprintf("// dbg -- tbl: %s kind:%s\n", tblRowNam.(string), pnode.Kind().String())
             _, _ = w.WriteString(dbgStr)
         }
-
+*/
         r.rcount++
         cellNam := fmt.Sprintf("cell%d",r.rcount)
         n.SetAttributeString("el",cellNam)
 
 		CellStr := "let " + cellNam + " = " + tblRowNam.(string) + ".insertCell();\n"
         _, _ = w.WriteString(CellStr)
-
-//        jsdom.renderTextChildren(w,source,node, true)
-//		_, _ = fmt.Fprintf(w, "<%s", tag)
-
-
-/*
-		// todo alignment
-		if n.Alignment != ast.AlignNone {
-			amethod := r.TableConfig.TableCellAlignMethod
-			if amethod == TableCellAlignDefault {
-				if r.Config.XHTML {
-					amethod = TableCellAlignAttribute
-				} else {
-					amethod = TableCellAlignStyle
-				}
-			}
-
-			switch amethod {
-			case TableCellAlignAttribute:
-				if _, ok := n.AttributeString("align"); !ok { // Skip align render if overridden
-					_, _ = fmt.Fprintf(w, ` align="%s"`, n.Alignment.String())
-				}
-			case TableCellAlignStyle:
-				v, ok := n.AttributeString("style")
-				var cob util.CopyOnWriteBuffer
-				if ok {
-					cob = util.NewCopyOnWriteBuffer(v.([]byte))
-					cob.AppendByte(';')
-				}
-				style := fmt.Sprintf("text-align:%s", n.Alignment.String())
-				cob.AppendString(style)
-				n.SetAttributeString("style", cob.Bytes())
-			}
-		}
-		if n.Attributes() != nil {
-			if tag == "td" {
-				html.RenderAttributes(w, n, TableTdCellAttributeFilter) // <td>
-			} else {
-				html.RenderAttributes(w, n, TableThCellAttributeFilter) // <th>
-			}
-		}
-		_ = w.WriteByte('>')
-	} else {
-		_, _ = fmt.Fprintf(w, "</%s>\n", tag)
-*/
+        tblStyl := "if(mdStyle.hasOwnProperty('td')){Object.assign(" + cellNam + ".style, mdStyle.td)};\n"
+        _, _ = w.WriteString(tblStyl)
 	}
 	return gast.WalkContinue, nil
 }
