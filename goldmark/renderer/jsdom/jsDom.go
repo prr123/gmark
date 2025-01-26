@@ -440,10 +440,12 @@ func (r *Renderer) renderHeading(w util.BufWriter, source []byte, node ast.Node,
 		parElNam, res := pnode.AttributeString("el")
 		if !res {return ast.WalkStop, fmt.Errorf("Heading: no parent el name: %s!", elNam)}
 
+/*
 		if r.dbg {
 			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
 			_, _ = w.WriteString(dbgStr)
 		}
+*/
 		hdStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
 		_, _ = w.WriteString(hdStr)
 	}
@@ -477,11 +479,12 @@ func (r *Renderer) renderBlockquote(
 		if !res {return ast.WalkStop, fmt.Errorf("no el name!")}
 		parElNam, res := pnode.AttributeString("el")
 		if !res {return ast.WalkStop, fmt.Errorf("no parent el name!")}
-
+/*
 		if r.dbg {
 			dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
 			_, _ = w.WriteString(dbgStr)
 		}
+*/
 		hdStr := parElNam.(string) + ".appendChild(" + elNam.(string) + ");\n"
 		_, _ = w.WriteString(hdStr)
 	}
@@ -773,7 +776,7 @@ func (r *Renderer) renderTextBlock(w util.BufWriter, source []byte, node ast.Nod
 //fmt.Println("dbg -- entering text block!")
 	}
     if !entering {
-fmt.Println("dbg -- leaving text block")
+//fmt.Println("dbg -- leaving text block")
     	if node.NextSibling() != nil && node.FirstChild() != nil {
 //fmt.Println("dbg -- text block next sib and first child exist")
 			r.count++
@@ -782,6 +785,7 @@ fmt.Println("dbg -- leaving text block")
 			if pnode == nil {return ast.WalkStop, fmt.Errorf("br -- no pnode")}
 			parElNam, res := pnode.AttributeString("el")
 			if !res {return ast.WalkStop, fmt.Errorf("HR -- no parent el name: %s!", elNam)}
+
 			if r.dbg {
 				dbgStr := fmt.Sprintf("// dbg -- el: %s parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
 				_, _ = w.WriteString(dbgStr)
@@ -1167,8 +1171,8 @@ func (r *Renderer) renderText (w util.BufWriter, source []byte, node ast.Node, e
     n := node.(*ast.Text)
 	pnode := node.Parent()
 	if pnode == nil {return ast.WalkStop, fmt.Errorf("Par -- no pnode")}
-	dbgStr := fmt.Sprintf("// dbg -- text parent: %s\n", pnode.Kind())
-_, _ = w.WriteString(dbgStr)
+//	dbgStr := fmt.Sprintf("// dbg -- text parent: %s\n", pnode.Kind())
+//_, _ = w.WriteString(dbgStr)
 	parElNam, res := pnode.AttributeString("el")
 	if !res {return ast.WalkStop, fmt.Errorf("Text -- no el name!")}
 //fmt.Printf(" par elnam: %s", parElNam.(string))
@@ -1188,31 +1192,29 @@ _, _ = w.WriteString(dbgStr)
 	if (n.HardLineBreak() || (n.SoftLineBreak() && r.HardWraps)) {
 		endStr = "\n`"
 	} else {
-_, _ = w.WriteString("// dbg -- no harlinebreak etc\n")
+//_, _ = w.WriteString("// dbg -- no harlinebreak etc\n")
 		sibling := node.NextSibling()
 		if sibling != nil {
 			if sibling.Kind() == ast.KindText {
 				if siblingText := sibling.(*ast.Text).Value(source); len(siblingText) != 0 {
-_, _ = w.WriteString("// dbg -- found sibling with text\n")
+//_, _ = w.WriteString("// dbg -- found sibling with text\n")
 					endStr = " `"
 				}
 			} else {
-_, _ = w.WriteString("// dbg -- sibling but no text\n")
+//_, _ = w.WriteString("// dbg -- sibling but no text\n")
 			}
 		} else {
-_, _ = w.WriteString("// dbg -- no sibling\n")
+//_, _ = w.WriteString("// dbg -- no sibling\n")
 			endStr = "\n`"
 		}
 	}
+/*
 	if r.dbg {
 		dbgStr := fmt.Sprintf("// dbg -- text %s: HLB %t SLB %t HWraps %t\n", elNam, n.HardLineBreak(), n.SoftLineBreak(), r.HardWraps)
 		_, _ = w.WriteString(dbgStr)
 	}
-//parent:%s kind:%s\n", elNam, parElNam, pnode.Kind().String())
-
-//	fmt.Printf("dbg -- rend txt: %s\n", valStr)
+*/
 	DatStr :=  "`" + valStr + endStr
-	//_, _ = w.WriteString(txtStr)
 	txtStr := "const "+elNam+ "=document.createTextNode(" + DatStr + ");\n"
 	_, _ = w.WriteString(txtStr)
 
@@ -1278,7 +1280,7 @@ var dataPrefix = []byte("data-")
 
 func RenderElAttributes(w util.BufWriter, node ast.Node, filter util.BytesFilter, elNam string) {
 
-fmt.Printf("dbg -- renderAttr elNam %s\n", elNam)
+//fmt.Printf("dbg -- renderAttr elNam %s\n", elNam)
 
 	for _, attr := range node.Attributes() {
 
